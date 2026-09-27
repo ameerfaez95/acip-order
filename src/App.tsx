@@ -371,6 +371,8 @@ function PaymentPage({
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${orderData.orderCode}-${Date.now()}.${fileExt}`
+      
+      // FIXED: Tidak perlu tambah 'receipts/' sebab bucket sudah bernama 'receipts'
       const filePath = fileName
 
       const { error: uploadError } = await supabase.storage
@@ -400,6 +402,51 @@ function PaymentPage({
       setUploading(false)
     }
   }
+
+  return (
+    <div className="page-content">
+      <h2>Pembayaran</h2>
+      
+      <div className="payment-info">
+        <p><strong>Order Code:</strong> {orderData.orderCode}</p>
+        <p><strong>Jumlah:</strong> RM {orderData.total.toFixed(2)}</p>
+      </div>
+
+      <div className="qr-container">
+        <img src="/qr.jpg" alt="QR Code Payment" className="qr-image" />
+        <p className="qr-hint">Scan QR code di atas untuk membuat pembayaran</p>
+      </div>
+
+      <div className="upload-section">
+        <h3>Muat Naik Bukti Pembayaran</h3>
+        <p className="upload-hint">Sila muat naik screenshot atau gambar resit pembayaran anda (JPG/PNG/PDF)</p>
+        
+        <input 
+          type="file" 
+          accept=".jpg,.jpeg,.png,.pdf"
+          onChange={handleUpload}
+          disabled={uploading || uploaded}
+          className="file-input"
+        />
+
+        {uploading && <p className="uploading">Sedang upload...</p>}
+        
+        {uploaded && (
+          <div className="upload-success">
+            <p>✓ Resit berjaya dimuat naik!</p>
+            <button className="btn-checkout" onClick={onSuccess}>
+              Selesai
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="payment-note">
+        <p><strong>Nota:</strong> Selepas muat naik resit, pesanan anda akan disemak oleh admin. Anda akan dihubungi melalui WhatsApp untuk pengesahan.</p>
+      </div>
+    </div>
+  )
+}
 
   return (
     <div className="page-content">
