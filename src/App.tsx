@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase, type Product } from './lib/supabase'
+import { getSession, onAuthStateChange } from './lib/auth'
+import AdminLogin from './pages/AdminLogin'
+import AdminDashboard from './pages/AdminDashboard'
+import AdminOrderDetail from './pages/AdminOrderDetail'
 import './App.css'
 
 type Page = 'menu' | 'checkout' | 'payment' | 'success'
 
-// Generate order code unik
 function generateOrderCode(): string {
   const now = new Date()
   const date = now.toISOString().slice(0, 10).replace(/-/g, '')
@@ -12,14 +16,41 @@ function generateOrderCode(): string {
   return `ACIP-${date}-${random}`
 }
 
-function App() {
+// Protected Route Component
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getSession().then((session) => {
+      setSession(session)
+      setLoading(false)
+    })
+
+    const unsubscribe = onAuthStateChange((session) => {
+      setSession(session)
+    })
+
+    return unsubscribe
+  }, [])
+
+  if (loading) {
+    return <div className="admin-loading">Loading...</div>
+  }
+
+  if (!session) {
+    return <Navigate to="/admin/login" replace />
+  }
+
+  return <>{children}</>
+}
+
+function CustomerApp() {
   const [menu, setMenu] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cart, setCart] = useState<Record<number, number>>({})
   const [page, setPage] = useState<Page>('menu')
-  
-  // Data order yang akan dihantar
   const [orderData, setOrderData] = useState<{
     orderCode: string
     customerName: string
@@ -41,7 +72,6 @@ function App() {
 
       if (error) {
         setError(error.message)
-        console.error('Error fetching menu:', error)
       } else {
         setMenu(data || [])
       }
@@ -79,14 +109,11 @@ function App() {
 
   const totalItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0)
 
-  // Fungsi untuk create order di Supabase
   async function createOrder(name: string, phone: string, remarks: string) {
     try {
       setLoading(true)
-      
       const orderCode = generateOrderCode()
       
-      // 1. Insert order utama
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -103,7 +130,6 @@ function App() {
 
       if (orderError) throw orderError
 
-      // 2. Insert order items
       const orderItems = menu
         .filter(item => cart[item.id] && cart[item.id] > 0)
         .map(item => ({
@@ -121,7 +147,6 @@ function App() {
 
       if (itemsError) throw itemsError
 
-      // 3. Set data order untuk payment page
       setOrderData({
         orderCode,
         customerName: name,
@@ -132,7 +157,6 @@ function App() {
 
       setPage('payment')
       setLoading(false)
-      
     } catch (err: any) {
       setError(err.message)
       setLoading(false)
@@ -144,7 +168,6 @@ function App() {
     <div className="container">
       <h1>Acip Order</h1>
 
-      {/* PAGE: MENU */}
       {page === 'menu' && (
         <>
           {loading && <p>Sedang load menu...</p>}
@@ -164,7 +187,6 @@ function App() {
                           alt={item.name} 
                           className="menu-image"
                           onError={(e) => {
-                            // Kalau gambar tidak jumpa, hide image
                             (e.target as HTMLImageElement).style.display = 'none'
                           }}
                         />
@@ -206,7 +228,6 @@ function App() {
         </>
       )}
 
-      {/* PAGE: CHECKOUT */}
       {page === 'checkout' && (
         <CheckoutPage 
           cart={cart}
@@ -218,7 +239,6 @@ function App() {
         />
       )}
 
-      {/* PAGE: PAYMENT */}
       {page === 'payment' && orderData && (
         <PaymentPage 
           orderData={orderData}
@@ -226,7 +246,6 @@ function App() {
         />
       )}
 
-      {/* PAGE: SUCCESS */}
       {page === 'success' && orderData && (
         <SuccessPage orderData={orderData} />
       )}
@@ -234,7 +253,6 @@ function App() {
   )
 }
 
-// Checkout Page Component
 function CheckoutPage({ 
   cart, 
   menu, 
@@ -322,7 +340,6 @@ function CheckoutPage({
   )
 }
 
-// Payment Page Component
 function PaymentPage({ 
   orderData, 
   onSuccess 
@@ -346,24 +363,20 @@ function PaymentPage({
     setUploading(true)
     
     try {
-      // Generate nama fail unik
       const fileExt = file.name.split('.').pop()
       const fileName = `${orderData.orderCode}-${Date.now()}.${fileExt}`
       const filePath = `receipts/${fileName}`
 
-      // Upload ke Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('receipts')
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
-      // Get URL resit
       const { data: { publicUrl } } = supabase.storage
         .from('receipts')
         .getPublicUrl(filePath)
 
-      // Update order dengan receipt URL dan status pending_verification
       const { error: updateError } = await supabase
         .from('orders')
         .update({
@@ -375,7 +388,6 @@ function PaymentPage({
       if (updateError) throw updateError
 
       setUploaded(true)
-      
     } catch (err: any) {
       alert('Error uploading receipt: ' + err.message)
     } finally {
@@ -428,7 +440,6 @@ function PaymentPage({
   )
 }
 
-// Success Page Component
 function SuccessPage({ 
   orderData 
 }: { 
@@ -468,6 +479,36 @@ function SuccessPage({
         Kami akan sahkan pembayaran dan hubungi anda bila pesanan sedia untuk pickup.
       </p>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Customer Routes */}
+        <Route path="/" element={<CustomerApp />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={<AdminLogin onLoginSuccess={() => window.location.href = '/admin'} />} />
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/order/:id" 
+          element={
+            <ProtectedRoute>
+              <AdminOrderDetail />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
