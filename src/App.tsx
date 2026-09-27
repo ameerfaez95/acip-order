@@ -371,7 +371,7 @@ function PaymentPage({
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${orderData.orderCode}-${Date.now()}.${fileExt}`
-      const filePath = `receipts/${fileName}`
+      const filePath = fileName
 
       const { error: uploadError } = await supabase.storage
         .from('receipts')
