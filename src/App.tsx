@@ -22,16 +22,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined
+
     getSession().then((session) => {
       setSession(session)
       setLoading(false)
     })
 
-    const unsubscribe = onAuthStateChange((session) => {
+    onAuthStateChange((session) => {
       setSession(session)
+    }).then((unsub) => {
+      unsubscribe = unsub
     })
 
-    return unsubscribe
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
   }, [])
 
   if (loading) {

@@ -45,27 +45,26 @@ export default function AdminDashboard() {
   }
 
   const getStatusBadge = (status: string, type: 'payment' | 'order') => {
-    const colors = {
-      payment: {
-        unpaid: '#dc3545',
-        pending_verification: '#ffc107',
-        verified: '#28a745',
-        rejected: '#dc3545',
-      },
-      order: {
-        new: '#007bff',
-        preparing: '#ffc107',
-        ready_for_pickup: '#28a745',
-        completed: '#6c757d',
-        cancelled: '#dc3545',
-      }
+    const paymentColors: Record<string, string> = {
+      unpaid: '#dc3545',
+      pending_verification: '#ffc107',
+      verified: '#28a745',
+      rejected: '#dc3545',
     }
 
+    const orderColors: Record<string, string> = {
+      new: '#007bff',
+      preparing: '#ffc107',
+      ready_for_pickup: '#28a745',
+      completed: '#6c757d',
+      cancelled: '#dc3545',
+    }
+
+    const colors = type === 'payment' ? paymentColors : orderColors
+    const color = colors[status] || '#6c757d'
+
     return (
-      <span 
-        className="status-badge" 
-        style={{ background: colors[type][status as keyof typeof colors[type]] || '#6c757d' }}
-      >
+      <span className="status-badge" style={{ background: color }}>
         {status.replace('_', ' ').toUpperCase()}
       </span>
     )
