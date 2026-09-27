@@ -16,7 +16,6 @@ function generateOrderCode(): string {
   return `ACIP-${date}-${random}`
 }
 
-// Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -448,51 +447,6 @@ function PaymentPage({
   )
 }
 
-  return (
-    <div className="page-content">
-      <h2>Pembayaran</h2>
-      
-      <div className="payment-info">
-        <p><strong>Order Code:</strong> {orderData.orderCode}</p>
-        <p><strong>Jumlah:</strong> RM {orderData.total.toFixed(2)}</p>
-      </div>
-
-      <div className="qr-container">
-        <img src="/qr.jpg" alt="QR Code Payment" className="qr-image" />
-        <p className="qr-hint">Scan QR code di atas untuk membuat pembayaran</p>
-      </div>
-
-      <div className="upload-section">
-        <h3>Muat Naik Bukti Pembayaran</h3>
-        <p className="upload-hint">Sila muat naik screenshot atau gambar resit pembayaran anda (JPG/PNG/PDF)</p>
-        
-        <input 
-          type="file" 
-          accept=".jpg,.jpeg,.png,.pdf"
-          onChange={handleUpload}
-          disabled={uploading || uploaded}
-          className="file-input"
-        />
-
-        {uploading && <p className="uploading">Sedang upload...</p>}
-        
-        {uploaded && (
-          <div className="upload-success">
-            <p>✓ Resit berjaya dimuat naik!</p>
-            <button className="btn-checkout" onClick={onSuccess}>
-              Selesai
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="payment-note">
-        <p><strong>Nota:</strong> Selepas muat naik resit, pesanan anda akan disemak oleh admin. Anda akan dihubungi melalui WhatsApp untuk pengesahan.</p>
-      </div>
-    </div>
-  )
-}
-
 function SuccessPage({ 
   orderData 
 }: { 
@@ -539,10 +493,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Customer Routes */}
         <Route path="/" element={<CustomerApp />} />
-        
-        {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin onLoginSuccess={() => window.location.href = '/admin'} />} />
         <Route 
           path="/admin" 
