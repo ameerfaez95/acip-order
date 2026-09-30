@@ -1,12 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { signIn } from '../lib/auth'
 import '../Admin.css'
 
-interface AdminLoginProps {
-  onLoginSuccess: () => void
-}
-
-export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
+export default function AdminLogin() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,7 +17,7 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
 
     try {
       await signIn(email, password)
-      onLoginSuccess()
+      navigate('/admin')
     } catch (err: any) {
       setError(err.message || 'Login failed')
     } finally {

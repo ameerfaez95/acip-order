@@ -98,7 +98,7 @@ function CustomerApp() {
     setCart(prev => {
       const currentQty = prev[productId] || 0
       if (currentQty <= 1) {
-        const { [productId]: removed, ...rest } = prev
+        const { [productId]: _removed, ...rest } = prev
         return rest
       }
       return { ...prev, [productId]: currentQty - 1 }
@@ -494,7 +494,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<CustomerApp />} />
-        <Route path="/admin/login" element={<AdminLogin onLoginSuccess={() => window.location.href = '/admin'} />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route 
           path="/admin" 
           element={

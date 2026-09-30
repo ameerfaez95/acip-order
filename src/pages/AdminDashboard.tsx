@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import '../Admin.css'
@@ -17,6 +18,7 @@ interface Order {
 }
 
 export default function AdminDashboard() {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -41,7 +43,7 @@ export default function AdminDashboard() {
 
   async function handleSignOut() {
     await signOut()
-    window.location.reload()
+    navigate('/admin/login')
   }
 
   const getStatusBadge = (status: string, type: 'payment' | 'order') => {
@@ -65,7 +67,7 @@ export default function AdminDashboard() {
 
     return (
       <span className="status-badge" style={{ background: color }}>
-        {status.replace('_', ' ').toUpperCase()}
+        {status.replaceAll('_', ' ').toUpperCase()}
       </span>
     )
   }
@@ -125,7 +127,7 @@ export default function AdminDashboard() {
                 <td>{getStatusBadge(order.order_status, 'order')}</td>
                 <td>{new Date(order.created_at).toLocaleString('ms-MY')}</td>
                 <td>
-                  <a href={`/admin/order/${order.id}`} className="btn-view">View</a>
+                  <Link to={`/admin/order/${order.id}`} className="btn-view">View</Link>
                 </td>
               </tr>
             ))}

@@ -3,6 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import '../Admin.css'
 
+// Tukar no. telefon kepada format WhatsApp (cth: "012-345 6789" -> "60123456789")
+function formatPhoneForWhatsApp(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  if (digits.startsWith('60')) return digits
+  if (digits.startsWith('0')) return `60${digits.slice(1)}`
+  return `60${digits}`
+}
+
+// Semak sama ada resit adalah fail PDF
+function isPdf(url: string): boolean {
+  return url.toLowerCase().split('?')[0].endsWith('.pdf')
+}
+
 interface OrderItem {
   id: number
   product_name: string
@@ -104,7 +117,8 @@ export default function AdminOrderDetail() {
   const whatsappMessage = encodeURIComponent(
     `Hi ${order.customer_name}, pesanan anda ${order.order_code} telah disahkan. Sila datang pickup pada waktu yang ditetapkan. Terima kasih!`
   )
-  const whatsappUrl = `https://wa.me/60${order.phone.replace(/^0/, '')}?text=${whatsappMessage}`
+  const whatsappUrl = `https://wa.me/${formatPhoneForWhatsApp(order.phone)}?text=${whatsappMessage}`
+  const receiptIsPdf = order.receipt_url ? isPdf(order.receipt_url) : false
 
   return (
     <div className="admin-order-detail">
@@ -159,14 +173,24 @@ export default function AdminOrderDetail() {
           {order.receipt_url && (
             <div className="receipt-preview">
               <h3>Payment Receipt</h3>
-              <img src={order.receipt_url} alt="Receipt" />
-              <a 
-                href={order.receipt_url} 
-                target="_blank" 
+              {receiptIsPdf ? (
+                <p className="receipt-file-note">Resit dalam format PDF.</p>
+              ) : (
+                <img
+                  src={order.receipt_url}
+                  alt="Receipt"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none'
+                  }}
+                />
+              )}
+              <a
+                href={order.receipt_url}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="btn-download"
               >
-                View Full Size
+                {receiptIsPdf ? 'Buka Resit PDF' : 'Lihat Saiz Penuh'}
               </a>
             </div>
           )}

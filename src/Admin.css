@@ -350,6 +350,12 @@
   max-height: 300px;
   border-radius: 8px;
   border: 1px solid #ddd;
+  margin: 0 auto 12px;
+}
+
+.receipt-file-note {
+  color: #666;
+  font-weight: 600;
   margin-bottom: 12px;
 }
 

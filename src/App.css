@@ -253,6 +253,7 @@ h1 {
   width: 100%;
   border-radius: 12px;
   border: 2px solid #ddd;
+  margin: 0 auto;
 }
 
 .qr-hint {
