@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signIn } from '../lib/auth'
+import Button from '../components/Button'
+import { useToast } from '../components/Toast'
 import '../Admin.css'
 
 export default function AdminLogin() {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,6 +20,7 @@ export default function AdminLogin() {
 
     try {
       await signIn(email, password)
+      showToast('Log masuk berjaya')
       navigate('/admin')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login gagal'
@@ -56,9 +60,9 @@ export default function AdminLogin() {
 
           {error && <p className="error-message">{error}</p>}
 
-          <button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
+          <Button type="submit" variant="primary" fullWidth loading={loading}>
+            Login
+          </Button>
         </form>
       </div>
     </div>

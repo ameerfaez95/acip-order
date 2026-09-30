@@ -2,13 +2,22 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase, type Order } from '../lib/supabase'
 import { signOut } from '../lib/auth'
+import Button from '../components/Button'
+import Badge from '../components/Badge'
+import { statusTone } from '../components/badgeTone'
+import Modal from '../components/Modal'
+import { SkeletonRow } from '../components/Skeleton'
+import { useToast } from '../components/Toast'
+import { IconLogout, IconBox, IconAlert } from '../components/icons'
 import '../Admin.css'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   useEffect(() => {
     async function fetchOrders() {
@@ -50,40 +59,25 @@ export default function AdminDashboard() {
 
   async function handleSignOut() {
     await signOut()
+    showToast('Anda telah log keluar', 'info')
     navigate('/admin/login')
-  }
-
-  const getStatusBadge = (status: string, type: 'payment' | 'order') => {
-    const paymentColors: Record<string, string> = {
-      unpaid: '#dc3545',
-      pending_verification: '#ffc107',
-      verified: '#28a745',
-      rejected: '#dc3545',
-    }
-
-    const orderColors: Record<string, string> = {
-      new: '#007bff',
-      preparing: '#ffc107',
-      ready_for_pickup: '#28a745',
-      completed: '#6c757d',
-      cancelled: '#dc3545',
-    }
-
-    const colors = type === 'payment' ? paymentColors : orderColors
-    const color = colors[status] || '#6c757d'
-
-    return (
-      <span className="status-badge" style={{ background: color }}>
-        {status.replaceAll('_', ' ').toUpperCase()}
-      </span>
-    )
   }
 
   if (loading) {
     return (
-      <div className="admin-loading">
-        <div className="spinner" />
-        <p>Memuatkan pesanan...</p>
+      <div className="admin-dashboard">
+        <div className="admin-header">
+          <h1>Admin Dashboard</h1>
+        </div>
+        <div className="orders-table-container">
+          <table className="orders-table">
+            <tbody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <SkeletonRow key={i} cols={8} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     )
   }
@@ -93,21 +87,30 @@ export default function AdminDashboard() {
       <div className="admin-dashboard">
         <div className="admin-header">
           <h1>Admin Dashboard</h1>
-          <button onClick={handleSignOut} className="btn-logout">Logout</button>
         </div>
         <div className="admin-error">
+          <IconAlert size={28} />
           <p>Gagal memuatkan pesanan: {error}</p>
-          <button onClick={refetchOrders} className="btn-primary">Cuba Lagi</button>
+          <Button variant="primary" onClick={refetchOrders}>
+            Cuba Lagi
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="admin-dashboard">
+    <div className="admin-dashboard fade-in">
       <div className="admin-header">
         <h1>Admin Dashboard</h1>
-        <button onClick={handleSignOut} className="btn-logout">Logout</button>
+        <Button
+          variant="danger"
+          size="sm"
+          icon={<IconLogout size={16} />}
+          onClick={() => setLogoutOpen(true)}
+        >
+          Logout
+        </Button>
       </div>
 
       <div className="admin-stats">
@@ -147,21 +150,29 @@ export default function AdminDashboard() {
             {orders.length === 0 ? (
               <tr>
                 <td colSpan={8} className="empty-state">
-                  <div className="empty-icon">📭</div>
+                  <IconBox size={48} />
                   <p>Belum ada pesanan</p>
                 </td>
               </tr>
             ) : (
               orders.map((order) => (
                 <tr key={order.id}>
-                  <td><strong>{order.order_code}</strong></td>
-                  <td>{order.customer_name}</td>
-                  <td>{order.phone}</td>
-                  <td>RM {order.total.toFixed(2)}</td>
-                  <td>{getStatusBadge(order.payment_status, 'payment')}</td>
-                  <td>{getStatusBadge(order.order_status, 'order')}</td>
-                  <td>{new Date(order.created_at).toLocaleString('ms-MY')}</td>
-                  <td>
+                  <td data-label="Order Code"><strong>{order.order_code}</strong></td>
+                  <td data-label="Customer">{order.customer_name}</td>
+                  <td data-label="Phone">{order.phone}</td>
+                  <td data-label="Total">RM {order.total.toFixed(2)}</td>
+                  <td data-label="Payment">
+                    <Badge tone={statusTone(order.payment_status, 'payment')}>
+                      {order.payment_status}
+                    </Badge>
+                  </td>
+                  <td data-label="Status">
+                    <Badge tone={statusTone(order.order_status, 'order')}>
+                      {order.order_status}
+                    </Badge>
+                  </td>
+                  <td data-label="Date">{new Date(order.created_at).toLocaleString('ms-MY')}</td>
+                  <td data-label="Actions">
                     <Link to={`/admin/order/${order.id}`} className="btn-view">View</Link>
                   </td>
                 </tr>
@@ -170,6 +181,16 @@ export default function AdminDashboard() {
           </tbody>
         </table>
       </div>
+
+      <Modal
+        open={logoutOpen}
+        title="Log keluar?"
+        message="Anda perlu log masuk semula untuk mengurus pesanan."
+        confirmLabel="Log keluar"
+        confirmVariant="danger"
+        onConfirm={handleSignOut}
+        onCancel={() => setLogoutOpen(false)}
+      />
     </div>
   )
 }

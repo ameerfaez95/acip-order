@@ -6,8 +6,21 @@ import { getSession, onAuthStateChange } from './lib/auth'
 import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminOrderDetail from './pages/AdminOrderDetail'
+import Navbar from './components/Navbar'
+import Button from './components/Button'
+import Spinner from './components/Spinner'
+import { SkeletonCard } from './components/Skeleton'
+import { ToastProvider, useToast } from './components/Toast'
+import {
+  IconPlus,
+  IconMinus,
+  IconBox,
+  IconArrowLeft,
+  IconWhatsApp,
+} from './components/icons'
 import './App.css'
 import './Admin.css'
+import './styles/components.css'
 
 type Page = 'menu' | 'checkout' | 'payment' | 'success'
 
@@ -44,8 +57,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="admin-loading">
-        <div className="spinner" />
-        <p>Memuatkan...</p>
+        <Spinner size={40} label="Memuatkan..." />
       </div>
     )
   }
@@ -58,6 +70,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function CustomerApp() {
+  const { showToast } = useToast()
   const [menu, setMenu] = useState<Product[]>([])
   const [menuLoading, setMenuLoading] = useState(true)
   const [orderLoading, setOrderLoading] = useState(false)
@@ -175,83 +188,130 @@ function CustomerApp() {
       const message = err instanceof Error ? err.message : 'Ralat tidak diketahui'
       setError(message)
       setOrderLoading(false)
-      alert('Error creating order: ' + message)
+      showToast('Gagal membuat pesanan: ' + message, 'error')
     }
+  }
+
+  const handleAdd = (item: Product) => {
+    addToCart(item.id)
+    showToast(`${item.name} ditambah ke cart`)
   }
 
   return (
     <div className="container">
-      <h1>Acip Order</h1>
+      <Navbar cartCount={totalItems} onCartClick={() => {
+        if (totalItems > 0) setPage('checkout')
+      }} />
 
       {page === 'menu' && (
         <>
+          <section className="hero">
+            <h1>Ayam Gunting Acip</h1>
+            <p>Segar, rangup & penuh perisa — pesan sekarang!</p>
+          </section>
+
+          <div className="section-title">
+            <h2>Menu Kami</h2>
+          </div>
+
           {menuLoading && (
-            <div className="page-loading">
-              <div className="spinner" />
-              <p>Memuatkan menu...</p>
+            <div className="menu-grid">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
           )}
+
           {error && !menuLoading && (
             <div className="page-error">
               <p>Gagal memuatkan menu: {error}</p>
+              <Button variant="secondary" onClick={() => window.location.reload()}>
+                Cuba Lagi
+              </Button>
             </div>
           )}
-          
-          {!menuLoading && !error && (
+
+          {!menuLoading && !error && menu.length === 0 && (
+            <div className="empty-menu">
+              <IconBox size={56} />
+              <h3>Tiada menu tersedia</h3>
+              <p>Sila cuba sebentar lagi atau hubungi kami.</p>
+            </div>
+          )}
+
+          {!menuLoading && !error && menu.length > 0 && (
             <>
-              {menu.length === 0 && (
-                <div className="page-error">
-                  <p>Tiada menu tersedia buat masa ini.</p>
-                </div>
-              )}
-              <div className="menu-grid">
+              <div className="menu-grid fade-in">
                 {menu.map((item) => {
                   const qty = getQty(item.id)
-                  
+
                   return (
                     <div key={item.id} className="menu-card">
                       {item.image_url && (
-                        <img 
-                          src={item.image_url} 
-                          alt={item.name} 
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
                           className="menu-image"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none'
                           }}
                         />
                       )}
-                      <h3>{item.name}</h3>
-                      <p className="price">RM {item.price.toFixed(2)}</p>
-                      
-                      <div className="qty-controls">
-                        {qty > 0 ? (
-                          <>
-                            <button className="btn-qty" onClick={() => removeFromCart(item.id)}>-</button>
-                            <span className="qty-display">{qty}</span>
-                            <button className="btn-qty" onClick={() => addToCart(item.id)}>+</button>
-                          </>
-                        ) : (
-                          <button className="btn-add" onClick={() => addToCart(item.id)}>Tambah</button>
-                        )}
+                      <div className="menu-card__body">
+                        <h3>{item.name}</h3>
+                        <p className="price">RM {item.price.toFixed(2)}</p>
+
+                        <div className="qty-controls">
+                          {qty > 0 ? (
+                            <>
+                              <button
+                                className="btn-qty"
+                                onClick={() => removeFromCart(item.id)}
+                                aria-label={`Kurang ${item.name}`}
+                              >
+                                <IconMinus size={18} />
+                              </button>
+                              <span className="qty-display">{qty}</span>
+                              <button
+                                className="btn-qty"
+                                onClick={() => handleAdd(item)}
+                                aria-label={`Tambah ${item.name}`}
+                              >
+                                <IconPlus size={18} />
+                              </button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              fullWidth
+                              icon={<IconPlus size={18} />}
+                              onClick={() => handleAdd(item)}
+                            >
+                              Tambah
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )
                 })}
               </div>
 
-              <div className="cart-summary">
-                <div className="cart-total">
-                  <span>{totalItems} item</span>
-                  <strong>RM {totalPrice.toFixed(2)}</strong>
+              {totalItems > 0 && (
+                <div className="cart-summary">
+                  <div className="cart-total">
+                    <span>{totalItems} item</span>
+                    <strong>RM {totalPrice.toFixed(2)}</strong>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => setPage('checkout')}
+                  >
+                    Teruskan
+                  </Button>
                 </div>
-                <button 
-                  className="btn-checkout" 
-                  disabled={totalItems === 0}
-                  onClick={() => setPage('checkout')}
-                >
-                  Teruskan ke Pembayaran
-                </button>
-              </div>
+              )}
             </>
           )}
         </>
@@ -309,10 +369,13 @@ function CheckoutPage({
   }
 
   return (
-    <div className="page-content">
-      <h2>Maklumat Pesanan</h2>
+    <div className="page-content fade-in">
+      <div className="section-title">
+        <h2>Maklumat Pesanan</h2>
+      </div>
 
-      <div className="cart-review">
+      <div className="cart-items">
+        <h3>Ringkasan Pesanan</h3>
         {cartItems.map(item => (
           <div key={item.id} className="cart-item">
             <span>{item.name} x {cart[item.id]}</span>
@@ -320,8 +383,8 @@ function CheckoutPage({
           </div>
         ))}
         <div className="cart-item total">
-          <strong>Jumlah</strong>
-          <strong>RM {totalPrice.toFixed(2)}</strong>
+          <span>Jumlah</span>
+          <span>RM {totalPrice.toFixed(2)}</span>
         </div>
       </div>
 
@@ -359,10 +422,18 @@ function CheckoutPage({
         </label>
 
         <div className="form-actions">
-          <button type="button" className="btn-back" onClick={onBack}>Kembali</button>
-          <button type="submit" className="btn-checkout" disabled={loading}>
-            {loading ? 'Sedang proses...' : 'Buat Pesanan'}
-          </button>
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            icon={<IconArrowLeft size={18} />}
+            onClick={onBack}
+          >
+            Kembali
+          </Button>
+          <Button type="submit" variant="primary" fullWidth loading={loading}>
+            Buat Pesanan
+          </Button>
         </div>
       </form>
     </div>
@@ -382,6 +453,7 @@ function PaymentPage({
   }
   onSuccess: () => void
 }) {
+  const { showToast } = useToast()
   const [uploading, setUploading] = useState(false)
   const [uploaded, setUploaded] = useState(false)
 
@@ -421,7 +493,7 @@ function PaymentPage({
       setUploaded(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ralat tidak diketahui'
-      alert('Error uploading receipt: ' + message)
+      showToast('Gagal memuat naik resit: ' + message, 'error')
     } finally {
       setUploading(false)
     }
@@ -453,14 +525,18 @@ function PaymentPage({
           className="file-input"
         />
 
-        {uploading && <p className="uploading">Sedang upload...</p>}
+        {uploading && (
+          <div className="page-loading">
+            <Spinner label="Sedang muat naik..." />
+          </div>
+        )}
         
         {uploaded && (
           <div className="upload-success">
             <p>✓ Resit berjaya dimuat naik!</p>
-            <button className="btn-checkout" onClick={onSuccess}>
+            <Button variant="primary" size="lg" onClick={onSuccess}>
               Selesai
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -489,20 +565,21 @@ function SuccessPage({
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`
 
   return (
-    <div className="page-content success-page">
+    <div className="page-content success-page fade-in">
       <div className="success-icon">✓</div>
       <h2>Pesanan Diterima!</h2>
       <p>Terima kasih, {orderData.customerName}!</p>
       <p>Order code anda: <strong>{orderData.orderCode}</strong></p>
       
       <div className="success-actions">
-        <a 
-          href={whatsappUrl} 
-          target="_blank" 
+        <a
+          href={whatsappUrl}
+          target="_blank"
           rel="noopener noreferrer"
-          className="btn-whatsapp"
+          className="btn btn--whatsapp btn--lg"
         >
-          Hantar Notifikasi WhatsApp
+          <span className="btn__icon"><IconWhatsApp size={20} /></span>
+          <span className="btn__label">Hantar Notifikasi WhatsApp</span>
         </a>
       </div>
 
@@ -516,28 +593,30 @@ function SuccessPage({
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<CustomerApp />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/order/:id" 
-          element={
-            <ProtectedRoute>
-              <AdminOrderDetail />
-            </ProtectedRoute>
-          } 
-        />
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<CustomerApp />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/order/:id" 
+            element={
+              <ProtectedRoute>
+                <AdminOrderDetail />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   )
 }
 

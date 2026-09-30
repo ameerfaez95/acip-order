@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase, type OrderWithItems, type PaymentStatus, type OrderStatus } from '../lib/supabase'
+import Button from '../components/Button'
+import Spinner from '../components/Spinner'
+import { useToast } from '../components/Toast'
+import { IconArrowLeft, IconAlert } from '../components/icons'
 import '../Admin.css'
 
 // Tukar no. telefon kepada format WhatsApp (cth: "012-345 6789" -> "60123456789")
@@ -19,6 +23,7 @@ function isPdf(url: string): boolean {
 export default function AdminOrderDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [order, setOrder] = useState<OrderWithItems | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -83,8 +88,10 @@ export default function AdminOrderDetail() {
     if (error) {
       console.error('Error updating payment status:', error)
       setError('Gagal kemas kini status pembayaran: ' + error.message)
+      showToast('Gagal kemas kini status pembayaran', 'error')
     } else {
       setOrder({ ...order, payment_status: status })
+      showToast('Status pembayaran dikemas kini')
     }
     
     setUpdating(false)
@@ -103,8 +110,10 @@ export default function AdminOrderDetail() {
     if (error) {
       console.error('Error updating order status:', error)
       setError('Gagal kemas kini status pesanan: ' + error.message)
+      showToast('Gagal kemas kini status pesanan', 'error')
     } else {
       setOrder({ ...order, order_status: status })
+      showToast('Status pesanan dikemas kini')
     }
     
     setUpdating(false)
@@ -113,8 +122,7 @@ export default function AdminOrderDetail() {
   if (loading) {
     return (
       <div className="admin-loading">
-        <div className="spinner" />
-        <p>Memuatkan pesanan...</p>
+        <Spinner size={40} label="Memuatkan pesanan..." />
       </div>
     )
   }
@@ -122,10 +130,20 @@ export default function AdminOrderDetail() {
   if (error && !order) {
     return (
       <div className="admin-order-detail">
-        <button onClick={() => navigate('/admin')} className="btn-back">← Kembali</button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<IconArrowLeft size={18} />}
+          onClick={() => navigate('/admin')}
+        >
+          Kembali
+        </Button>
         <div className="admin-error">
+          <IconAlert size={28} />
           <p>Gagal memuatkan pesanan: {error}</p>
-          <button onClick={refetchOrder} className="btn-primary">Cuba Lagi</button>
+          <Button variant="primary" onClick={refetchOrder}>
+            Cuba Lagi
+          </Button>
         </div>
       </div>
     )
@@ -134,7 +152,14 @@ export default function AdminOrderDetail() {
   if (!order) {
     return (
       <div className="admin-order-detail">
-        <button onClick={() => navigate('/admin')} className="btn-back">← Kembali</button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<IconArrowLeft size={18} />}
+          onClick={() => navigate('/admin')}
+        >
+          Kembali
+        </Button>
         <div className="admin-error">
           <p>Pesanan tidak dijumpai.</p>
         </div>
@@ -149,14 +174,19 @@ export default function AdminOrderDetail() {
   const receiptIsPdf = order.receipt_url ? isPdf(order.receipt_url) : false
 
   return (
-    <div className="admin-order-detail">
-      <button onClick={() => navigate('/admin')} className="btn-back">
-        ← Back to Dashboard
-      </button>
+    <div className="admin-order-detail fade-in">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<IconArrowLeft size={18} />}
+        onClick={() => navigate('/admin')}
+      >
+        Kembali ke Dashboard
+      </Button>
 
       <div className="order-header">
         <h1>Order {order.order_code}</h1>
-        <p>Created: {new Date(order.created_at).toLocaleString('ms-MY')}</p>
+        <p>Dibuat: {new Date(order.created_at).toLocaleString('ms-MY')}</p>
       </div>
 
       {error && (
@@ -176,7 +206,7 @@ export default function AdminOrderDetail() {
             href={whatsappUrl} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="btn-whatsapp"
+            className="btn btn--whatsapp btn--md"
           >
             WhatsApp Customer
           </a>
@@ -188,20 +218,22 @@ export default function AdminOrderDetail() {
           <p>Total: <strong>RM {order.total.toFixed(2)}</strong></p>
           
           <div className="action-buttons">
-            <button 
+            <Button
+              variant="success"
+              fullWidth
               onClick={() => updatePaymentStatus('verified')}
               disabled={updating || order.payment_status === 'verified'}
-              className="btn-success"
             >
               Verify Payment
-            </button>
-            <button 
+            </Button>
+            <Button
+              variant="danger"
+              fullWidth
               onClick={() => updatePaymentStatus('rejected')}
               disabled={updating || order.payment_status === 'rejected'}
-              className="btn-danger"
             >
               Reject Payment
-            </button>
+            </Button>
           </div>
 
           {order.receipt_url && (
@@ -235,34 +267,38 @@ export default function AdminOrderDetail() {
           <p>Current: <strong>{order.order_status}</strong></p>
           
           <div className="action-buttons">
-            <button 
+            <Button
+              variant="info"
+              fullWidth
               onClick={() => updateOrderStatus('preparing')}
               disabled={updating}
-              className="btn-primary"
             >
               Start Preparing
-            </button>
-            <button 
+            </Button>
+            <Button
+              variant="success"
+              fullWidth
               onClick={() => updateOrderStatus('ready_for_pickup')}
               disabled={updating}
-              className="btn-success"
             >
               Ready for Pickup
-            </button>
-            <button 
+            </Button>
+            <Button
+              variant="secondary"
+              fullWidth
               onClick={() => updateOrderStatus('completed')}
               disabled={updating}
-              className="btn-secondary"
             >
               Completed
-            </button>
-            <button 
+            </Button>
+            <Button
+              variant="danger"
+              fullWidth
               onClick={() => updateOrderStatus('cancelled')}
               disabled={updating}
-              className="btn-danger"
             >
               Cancel Order
-            </button>
+            </Button>
           </div>
         </div>
       </div>
