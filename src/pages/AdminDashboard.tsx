@@ -1,33 +1,39 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase, type Order } from '../lib/supabase'
 import { signOut } from '../lib/auth'
 import '../Admin.css'
-
-interface Order {
-  id: number
-  order_code: string
-  customer_name: string
-  phone: string
-  remarks: string | null
-  total: number
-  payment_status: string
-  order_status: string
-  receipt_url: string | null
-  created_at: string
-}
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    async function fetchOrders() {
+      setLoading(true)
+      setError(null)
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching orders:', error)
+        setError(error.message)
+      } else {
+        setOrders(data || [])
+      }
+      setLoading(false)
+    }
+
     fetchOrders()
   }, [])
 
-  async function fetchOrders() {
+  async function refetchOrders() {
     setLoading(true)
+    setError(null)
     const { data, error } = await supabase
       .from('orders')
       .select('*')
@@ -35,6 +41,7 @@ export default function AdminDashboard() {
 
     if (error) {
       console.error('Error fetching orders:', error)
+      setError(error.message)
     } else {
       setOrders(data || [])
     }
@@ -73,7 +80,27 @@ export default function AdminDashboard() {
   }
 
   if (loading) {
-    return <div className="admin-loading">Loading orders...</div>
+    return (
+      <div className="admin-loading">
+        <div className="spinner" />
+        <p>Memuatkan pesanan...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="admin-dashboard">
+        <div className="admin-header">
+          <h1>Admin Dashboard</h1>
+          <button onClick={handleSignOut} className="btn-logout">Logout</button>
+        </div>
+        <div className="admin-error">
+          <p>Gagal memuatkan pesanan: {error}</p>
+          <button onClick={refetchOrders} className="btn-primary">Cuba Lagi</button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -117,20 +144,29 @@ export default function AdminDashboard() {
             </tr>
           </thead>
           <tbody>
-            {orders.map((order) => (
-              <tr key={order.id}>
-                <td><strong>{order.order_code}</strong></td>
-                <td>{order.customer_name}</td>
-                <td>{order.phone}</td>
-                <td>RM {order.total.toFixed(2)}</td>
-                <td>{getStatusBadge(order.payment_status, 'payment')}</td>
-                <td>{getStatusBadge(order.order_status, 'order')}</td>
-                <td>{new Date(order.created_at).toLocaleString('ms-MY')}</td>
-                <td>
-                  <Link to={`/admin/order/${order.id}`} className="btn-view">View</Link>
+            {orders.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="empty-state">
+                  <div className="empty-icon">📭</div>
+                  <p>Belum ada pesanan</p>
                 </td>
               </tr>
-            ))}
+            ) : (
+              orders.map((order) => (
+                <tr key={order.id}>
+                  <td><strong>{order.order_code}</strong></td>
+                  <td>{order.customer_name}</td>
+                  <td>{order.phone}</td>
+                  <td>RM {order.total.toFixed(2)}</td>
+                  <td>{getStatusBadge(order.payment_status, 'payment')}</td>
+                  <td>{getStatusBadge(order.order_status, 'order')}</td>
+                  <td>{new Date(order.created_at).toLocaleString('ms-MY')}</td>
+                  <td>
+                    <Link to={`/admin/order/${order.id}`} className="btn-view">View</Link>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

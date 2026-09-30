@@ -1,75 +1,115 @@
-# React + TypeScript + Vite
+# Acip Ayam Gunting — Web App Pesanan
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web app untuk membuat pesanan **Ayam Gunting Acip** secara online. Pelanggan boleh pilih menu, buat pesanan, muat naik bukti pembayaran, dan admin boleh urus pesanan melalui dashboard.
 
-Currently, two official plugins are available:
+## 🚀 Ciri-ciri
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Pelanggan
+- Paparan menu dengan gambar & harga
+- Tambah/kurang item ke troli (cart)
+- Borang checkout (nama, telefon, catatan)
+- Halaman pembayaran dengan QR code
+- Muat naik bukti pembayaran (JPG/PNG/PDF)
+- Notifikasi WhatsApp automatik ke admin
 
-## React Compiler
+### Admin
+- Login selamat (Supabase Auth)
+- Dashboard pesanan dengan statistik
+- Lihat butiran pesanan penuh
+- Kemas kini status pembayaran (unpaid / pending_verification / verified / rejected)
+- Kemas kini status pesanan (new / preparing / ready_for_pickup / completed / cancelled)
+- Hubungi pelanggan terus melalui WhatsApp
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Teknologi
 
-## Expanding the ESLint configuration
+| Komponen | Teknologi |
+|---|---|
+| Frontend | React 19 + TypeScript |
+| Build Tool | Vite |
+| Routing | React Router DOM v7 |
+| Backend / DB | Supabase (PostgreSQL + Auth + Storage) |
+| Styling | CSS |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 📦 Pemasangan
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+```bash
+# Pasang dependencies
+npm install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Jalankan dev server
+npm run dev
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Bina untuk production
+npm run build
 
+# Pratonton build production
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+## ⚙️ Konfigurasi
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Cipta fail `.env` di root projek:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
+## 🗄️ Skema Database (Supabase)
+
+### `products`
+| Kolum | Jenis | Keterangan |
+|---|---|---|
+| id | int8 (PK) | ID produk |
+| name | text | Nama produk |
+| slug | text | Slug unik |
+| price | numeric | Harga (RM) |
+| image_url | text | URL gambar |
+| is_active | bool | Papar di menu |
+
+### `orders`
+| Kolum | Jenis | Keterangan |
+|---|---|---|
+| id | int8 (PK) | ID pesanan |
+| order_code | text | Kod pesanan (ACIP-YYYYMMDD-XXXXXX) |
+| customer_name | text | Nama pelanggan |
+| phone | text | No. telefon |
+| remarks | text | Catatan |
+| total | numeric | Jumlah (RM) |
+| payment_status | text | unpaid / pending_verification / verified / rejected |
+| order_status | text | new / preparing / ready_for_pickup / completed / cancelled |
+| receipt_url | text | URL bukti pembayaran |
+| created_at | timestamptz | Masa pesanan dibuat |
+
+### `order_items`
+| Kolum | Jenis | Keterangan |
+|---|---|---|
+| id | int8 (PK) | ID item |
+| order_id | int8 (FK) | Rujuk `orders.id` |
+| product_id | int8 (FK) | Rujuk `products.id` |
+| product_name | text | Nama produk (snapshot) |
+| price | numeric | Harga seunit (snapshot) |
+| qty | int4 | Kuantiti |
+| subtotal | numeric | price × qty |
+
+## 🌐 Hosting
+
+Projek di-host menggunakan **Cloudflare Pages** yang disambung ke repo GitHub ini.
+Setiap `git push` ke branch `main` akan mencetuskan deploy automatik.
+
+## 📁 Struktur Projek
+
+```
+src/
+├── lib/
+│   ├── auth.ts          # Fungsi Supabase Auth
+│   └── supabase.ts      # Client Supabase + shared types
+├── pages/
+│   ├── AdminDashboard.tsx    # Senarai pesanan
+│   ├── AdminLogin.tsx        # Login admin
+│   └── AdminOrderDetail.tsx  # Butiran pesanan
+├── App.tsx              # Customer app + routing
+├── App.css              # Styling customer
+├── Admin.css            # Styling admin
+└── index.css            # Global reset
 ```

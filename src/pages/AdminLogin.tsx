@@ -18,8 +18,9 @@ export default function AdminLogin() {
     try {
       await signIn(email, password)
       navigate('/admin')
-    } catch (err: any) {
-      setError(err.message || 'Login failed')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login gagal'
+      setError(message)
     } finally {
       setLoading(false)
     }

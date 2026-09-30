@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase, type OrderWithItems, type PaymentStatus, type OrderStatus } from '../lib/supabase'
 import '../Admin.css'
 
 // Tukar no. telefon kepada format WhatsApp (cth: "012-345 6789" -> "60123456789")
@@ -16,41 +16,42 @@ function isPdf(url: string): boolean {
   return url.toLowerCase().split('?')[0].endsWith('.pdf')
 }
 
-interface OrderItem {
-  id: number
-  product_name: string
-  price: number
-  qty: number
-  subtotal: number
-}
-
-interface Order {
-  id: number
-  order_code: string
-  customer_name: string
-  phone: string
-  remarks: string | null
-  total: number
-  payment_status: string
-  order_status: string
-  receipt_url: string | null
-  created_at: string
-  items: OrderItem[]
-}
-
 export default function AdminOrderDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [order, setOrder] = useState<Order | null>(null)
+  const [order, setOrder] = useState<OrderWithItems | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    async function fetchOrder() {
+      setLoading(true)
+      setError(null)
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          items:order_items(*)
+        `)
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        console.error('Error fetching order:', error)
+        setError(error.message)
+      } else {
+        setOrder(data)
+      }
+      setLoading(false)
+    }
+
     fetchOrder()
   }, [id])
 
-  async function fetchOrder() {
+  async function refetchOrder() {
     setLoading(true)
+    setError(null)
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -62,15 +63,17 @@ export default function AdminOrderDetail() {
 
     if (error) {
       console.error('Error fetching order:', error)
+      setError(error.message)
     } else {
       setOrder(data)
     }
     setLoading(false)
   }
 
-  async function updatePaymentStatus(status: string) {
+  async function updatePaymentStatus(status: PaymentStatus) {
     if (!order) return
     setUpdating(true)
+    setError(null)
     
     const { error } = await supabase
       .from('orders')
@@ -79,7 +82,7 @@ export default function AdminOrderDetail() {
 
     if (error) {
       console.error('Error updating payment status:', error)
-      alert('Failed to update payment status')
+      setError('Gagal kemas kini status pembayaran: ' + error.message)
     } else {
       setOrder({ ...order, payment_status: status })
     }
@@ -87,9 +90,10 @@ export default function AdminOrderDetail() {
     setUpdating(false)
   }
 
-  async function updateOrderStatus(status: string) {
+  async function updateOrderStatus(status: OrderStatus) {
     if (!order) return
     setUpdating(true)
+    setError(null)
     
     const { error } = await supabase
       .from('orders')
@@ -98,7 +102,7 @@ export default function AdminOrderDetail() {
 
     if (error) {
       console.error('Error updating order status:', error)
-      alert('Failed to update order status')
+      setError('Gagal kemas kini status pesanan: ' + error.message)
     } else {
       setOrder({ ...order, order_status: status })
     }
@@ -107,11 +111,35 @@ export default function AdminOrderDetail() {
   }
 
   if (loading) {
-    return <div className="admin-loading">Loading order...</div>
+    return (
+      <div className="admin-loading">
+        <div className="spinner" />
+        <p>Memuatkan pesanan...</p>
+      </div>
+    )
+  }
+
+  if (error && !order) {
+    return (
+      <div className="admin-order-detail">
+        <button onClick={() => navigate('/admin')} className="btn-back">← Kembali</button>
+        <div className="admin-error">
+          <p>Gagal memuatkan pesanan: {error}</p>
+          <button onClick={refetchOrder} className="btn-primary">Cuba Lagi</button>
+        </div>
+      </div>
+    )
   }
 
   if (!order) {
-    return <div className="admin-loading">Order not found</div>
+    return (
+      <div className="admin-order-detail">
+        <button onClick={() => navigate('/admin')} className="btn-back">← Kembali</button>
+        <div className="admin-error">
+          <p>Pesanan tidak dijumpai.</p>
+        </div>
+      </div>
+    )
   }
 
   const whatsappMessage = encodeURIComponent(
@@ -130,6 +158,12 @@ export default function AdminOrderDetail() {
         <h1>Order {order.order_code}</h1>
         <p>Created: {new Date(order.created_at).toLocaleString('ms-MY')}</p>
       </div>
+
+      {error && (
+        <div className="admin-error-banner">
+          {error}
+        </div>
+      )}
 
       <div className="order-grid">
         <div className="order-info-card">

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import type { Session } from '@supabase/supabase-js'
 import { supabase, type Product } from './lib/supabase'
 import { getSession, onAuthStateChange } from './lib/auth'
 import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminOrderDetail from './pages/AdminOrderDetail'
 import './App.css'
+import './Admin.css'
 
 type Page = 'menu' | 'checkout' | 'payment' | 'success'
 
@@ -17,7 +19,7 @@ function generateOrderCode(): string {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -40,7 +42,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (loading) {
-    return <div className="admin-loading">Loading...</div>
+    return (
+      <div className="admin-loading">
+        <div className="spinner" />
+        <p>Memuatkan...</p>
+      </div>
+    )
   }
 
   if (!session) {
@@ -52,7 +59,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function CustomerApp() {
   const [menu, setMenu] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  const [menuLoading, setMenuLoading] = useState(true)
+  const [orderLoading, setOrderLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cart, setCart] = useState<Record<number, number>>({})
   const [page, setPage] = useState<Page>('menu')
@@ -66,7 +74,7 @@ function CustomerApp() {
 
   useEffect(() => {
     async function fetchMenu() {
-      setLoading(true)
+      setMenuLoading(true)
       setError(null)
       
       const { data, error } = await supabase
@@ -81,7 +89,7 @@ function CustomerApp() {
         setMenu(data || [])
       }
       
-      setLoading(false)
+      setMenuLoading(false)
     }
 
     fetchMenu()
@@ -98,7 +106,8 @@ function CustomerApp() {
     setCart(prev => {
       const currentQty = prev[productId] || 0
       if (currentQty <= 1) {
-        const { [productId]: _removed, ...rest } = prev
+        const rest = { ...prev }
+        delete rest[productId]
         return rest
       }
       return { ...prev, [productId]: currentQty - 1 }
@@ -116,7 +125,7 @@ function CustomerApp() {
 
   async function createOrder(name: string, phone: string, remarks: string) {
     try {
-      setLoading(true)
+      setOrderLoading(true)
       const orderCode = generateOrderCode()
       
       const { data: order, error: orderError } = await supabase
@@ -161,11 +170,12 @@ function CustomerApp() {
       })
 
       setPage('payment')
-      setLoading(false)
-    } catch (err: any) {
-      setError(err.message)
-      setLoading(false)
-      alert('Error creating order: ' + err.message)
+      setOrderLoading(false)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Ralat tidak diketahui'
+      setError(message)
+      setOrderLoading(false)
+      alert('Error creating order: ' + message)
     }
   }
 
@@ -175,11 +185,25 @@ function CustomerApp() {
 
       {page === 'menu' && (
         <>
-          {loading && <p>Sedang load menu...</p>}
-          {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+          {menuLoading && (
+            <div className="page-loading">
+              <div className="spinner" />
+              <p>Memuatkan menu...</p>
+            </div>
+          )}
+          {error && !menuLoading && (
+            <div className="page-error">
+              <p>Gagal memuatkan menu: {error}</p>
+            </div>
+          )}
           
-          {!loading && !error && (
+          {!menuLoading && !error && (
             <>
+              {menu.length === 0 && (
+                <div className="page-error">
+                  <p>Tiada menu tersedia buat masa ini.</p>
+                </div>
+              )}
               <div className="menu-grid">
                 {menu.map((item) => {
                   const qty = getQty(item.id)
@@ -240,7 +264,7 @@ function CustomerApp() {
           totalPrice={totalPrice}
           onBack={() => setPage('menu')}
           onSubmit={createOrder}
-          loading={loading}
+          loading={orderLoading}
         />
       )}
 
@@ -395,8 +419,9 @@ function PaymentPage({
       if (updateError) throw updateError
 
       setUploaded(true)
-    } catch (err: any) {
-      alert('Error uploading receipt: ' + err.message)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Ralat tidak diketahui'
+      alert('Error uploading receipt: ' + message)
     } finally {
       setUploading(false)
     }

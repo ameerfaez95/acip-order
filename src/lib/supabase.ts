@@ -17,3 +17,41 @@ export type Product = {
   image_url: string | null
   is_active: boolean
 }
+
+export type PaymentStatus =
+  | 'unpaid'
+  | 'pending_verification'
+  | 'verified'
+  | 'rejected'
+
+export type OrderStatus =
+  | 'new'
+  | 'preparing'
+  | 'ready_for_pickup'
+  | 'completed'
+  | 'cancelled'
+
+export type OrderItem = {
+  id: number
+  product_name: string
+  price: number
+  qty: number
+  subtotal: number
+}
+
+export type Order = {
+  id: number
+  order_code: string
+  customer_name: string
+  phone: string
+  remarks: string | null
+  total: number
+  payment_status: PaymentStatus
+  order_status: OrderStatus
+  receipt_url: string | null
+  created_at: string
+}
+
+export type OrderWithItems = Order & {
+  items: OrderItem[]
+}
